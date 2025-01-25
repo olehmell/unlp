@@ -73,9 +73,10 @@ checkpoints/
 *.onnx
 
 # Data
-data/*
+data/csv
 !data/.gitkeep
 
 # OS specific
 .DS_Store
 Thumbs.db
+*.log

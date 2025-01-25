@@ -108,6 +108,38 @@ class ManipulationClassifier:
             
         return result
 
+    def predict_with_scores(self, texts: List[str], threshold: float = 0.5) -> tuple[List[List[str]], List[np.ndarray]]:
+        """Predict manipulation techniques and return raw scores."""
+        encodings = self.tokenizer(
+            texts,
+            truncation=True,
+            padding=True,
+            max_length=512,
+            return_tensors='pt'
+        ).to(self.device)
+
+        with torch.no_grad():
+            outputs = self.model(**encodings)
+            scores = torch.sigmoid(outputs.logits)
+            predictions = (scores > threshold)
+            
+            # Convert to float32 before moving to CPU and numpy
+            scores = scores.float()
+            predictions = predictions.float()
+
+        predictions = predictions.cpu().numpy()
+        scores = scores.cpu().numpy()
+        
+        result = []
+        for pred in predictions:
+            techniques = []
+            for technique, idx in self.technique_mapping.items():
+                if pred[idx]:
+                    techniques.append(technique)
+            result.append(techniques)
+            
+        return result, scores
+
 class ManipulationDataset(torch.utils.data.Dataset):
     def __init__(self, encodings):
         self.encodings = encodings

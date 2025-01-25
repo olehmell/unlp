@@ -22,8 +22,8 @@ def train_model(model_name):
         train_df=train_df,
         val_df=val_df,
         output_dir=f'models/{model_name.split("/")[-1]}-manipulation',
-        num_epochs=1,
-        batch_size=16
+        num_epochs=10,
+        batch_size=24
     )
 
     # Example prediction and evaluation
