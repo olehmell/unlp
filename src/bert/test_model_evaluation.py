@@ -9,7 +9,7 @@ def test_model_predictions():
     _, val_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df['manipulative'])
     
     # Initialize the classifier
-    classifier = ManipulationClassifier("models/ModernBERT-base-manipulation/checkpoint-192")
+    classifier = ManipulationClassifier("models/ModernBERT-base-manipulation/checkpoint-640")
     print("\nModel Evaluation Test Started...")
     # Evaluate model performance
     metrics = evaluate_predictions(val_df['content'].tolist(), val_df['techniques'].tolist(), classifier)
