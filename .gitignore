@@ -80,6 +80,3 @@ data/csv
 .DS_Store
 Thumbs.db
 *.log
-
-# Configuration
-config.py
