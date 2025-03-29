@@ -9,7 +9,10 @@ import logging
 class StoreManager:
     def __init__(self, mongo_uri: str, dimension: int = 1024):
         # Initialize MongoDB
-        self.mongo_client = MongoClient(mongo_uri)
+        self.mongo_client = MongoClient(
+            mongo_uri,
+            tlsAllowInvalidCertificates=True  # This bypasses SSL certificate verification
+        )
         self.db = self.mongo_client.manipulation_db
         self.analyses = self.db.analyses
         

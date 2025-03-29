@@ -88,3 +88,4 @@ if __name__ == "__main__":
         file_path='data/bin/train.parquet',
         batch_size=10
     ) 
+    

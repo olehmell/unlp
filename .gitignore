@@ -73,7 +73,7 @@ checkpoints/
 *.onnx
 
 # Data
-data/csv
+data
 !data/.gitkeep
 
 # OS specific

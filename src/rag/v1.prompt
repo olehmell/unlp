@@ -1,0 +1,30 @@
+Analyze the following text for potential manipulation techniques.
+
+Input:
+	•	Query text: {query_text}
+	•	Similar texts with identified manipulation techniques: {similar_texts_section}
+
+Task:
+
+Based on the similar texts and technique distribution provided:
+1. Identify manipulation techniques present in the query text
+2. Consider rare techniques that may be underrepresented in similar examples
+
+Reference – Manipulation Techniques:
+	1.	loaded_language: Use of emotionally charged words to influence the audience. Example: “packing Ukrainians into minibuses” evokes strong negative emotions.
+	2.	glittering_generalities: Broad, positive-sounding statements that lack specifics. Example: “Ukrainians are a free nation, and we will prevail!” appeals to patriotism without argumentation.
+	3.	euphoria: Creating an overwhelming sense of success or optimism to boost morale. Example: “We crushed the enemy battalion completely!” emphasizes triumph.
+	4.	appeal_to_fear: Using fear to push a particular agenda. Example: “Ukrainians abroad may lose banking services!” creates panic.
+	5.	fud: Sowing fear, uncertainty, or doubt by questioning reality. Example: “Was he really there? Nobody will ever know.” implies deception without evidence.
+	6.	bandwagon: Encouraging action by claiming that “everyone is doing it.” Example: “More Germans are rejecting sanctions!” suggests a growing movement.
+	7.	thought_terminating_cliché: Phrases that block critical thinking. Example: “We’ll never know the full truth.” discourages further inquiry.
+	8.	whataboutism: Deflecting criticism by pointing to another issue instead of addressing concerns. Example: “If their air defense failed, why criticize ours?” shifts focus.
+	9.	cherry_picking: Selectively presenting facts to fit a narrative. Example: “Mobilization quotas are met in some regions but ignored in others.” lacks context.
+	10.	straw_man: Misrepresenting an argument to make it easier to attack. Example: “Teaching gender sensitivity is brainwashing children.” distorts the policy’s intent.
+
+Important:
+- Not all techniques in the reference list will appear in your examples or query
+- Some techniques may be subtly present despite not appearing in similar examples
+- Consider the context and semantic meaning, not just lexical similarity
+
+If no manipulation is detected, return an empty array ([]).

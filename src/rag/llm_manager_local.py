@@ -1,23 +1,17 @@
-from typing import List, Dict, Optional
+from typing import List, Dict
 import logging
 import os
+from dotenv import load_dotenv
+import requests
 import json
-import asyncio
-from mistralai import Mistral
-from pydantic import BaseModel, Field
 
-class TextAnalysis(BaseModel):
-    """Data model for text analysis output."""
-    manipulation_techniques: List[str] = Field(description="List of identified manipulation techniques")
+# Load environment variables
+load_dotenv()
 
 class LLMManager:
     def __init__(self):
-        self.api_key = os.getenv("MISTRAL_API_KEY")
-        if not self.api_key:
-            raise ValueError("MISTRAL_API_KEY environment variable must be set")
-        
-        self.client = Mistral(api_key=self.api_key)
-        self.model = "open-mistral-nemo"  # Using the MistralAI open-mistral-nemo model
+        self.base_url = "http://localhost:10000"
+        self.model = "mistral-nemo"  # or any other model you have in Ollama
         self.prompt_template = self._load_prompt_template()
         
     def _load_prompt_template(self) -> str:
@@ -35,6 +29,10 @@ class LLMManager:
             similar_texts_section += f"\nManipulative: {text['manipulative']}"
             similar_texts_section += f"\nSimilarity score: {text['similarity_score']:.4f}\n"
 
+        print(similar_texts_section)
+
+        print(query_text)
+
         return self.prompt_template.format(
             query_text=query_text,
             similar_texts_section=similar_texts_section
@@ -43,29 +41,33 @@ class LLMManager:
     async def get_analysis(self, prompt: str) -> Dict:
         """Get analysis from the LLM using the provided prompt."""
         try:
-            # Use Mistral's parse method to get structured output
-            response = await asyncio.to_thread(
-                self.client.chat.parse,
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert in identifying manipulation techniques in text, specializing in multilabel classification for imbalanced datasets.",
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    }
-                ],
-                response_format=TextAnalysis,
-                temperature=0.1
+            response = requests.post(
+                f"{self.base_url}/api/chat",
+                json={
+                    "model": self.model,
+                    "messages": [
+                        {"role": "system", "content": "You are an expert in analyzing manipulation techniques in text."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "format": "json",
+                    "stream": False
+                }
             )
+            response.raise_for_status()
             
-            # Extract the parsed result
-            analysis = response.choices[0].message.parsed
+            result = response.json()
+            content = result['message']['content']
+            
+            # Try to parse the content as JSON
+            try:
+                content_json = json.loads(content)
+                analysis = content_json
+            except json.JSONDecodeError:
+                # If parsing fails, return the raw content
+                analysis = content
             
             return {
-                "analysis": analysis.dict(),
+                "analysis": analysis,
                 "model": self.model
             }
             
@@ -94,4 +96,4 @@ Analysis Results:
 {formatted_analysis}
 
 Model: {analysis_result['model']}
-"""
+""" 

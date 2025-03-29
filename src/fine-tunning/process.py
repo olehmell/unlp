@@ -1,35 +1,61 @@
-import asyncio
-import logging
 import os
-import pandas as pd
-import json
 import time
+import json
+import logging
+import asyncio
+import pandas as pd
+from mistralai import Mistral
 from dotenv import load_dotenv
 from typing import Dict, List, Set
-from embedding_manager import EmbeddingManager
-from store_manager import StoreManager
-from llm_manager import LLMManager
+from pydantic import BaseModel, Field
+from pyparsing import Enum
 
 # Load environment variables
 load_dotenv()
 
-test_ids = [
-    "7159f802-6f99-4e9d-97bd-6f565a4a0fae",
-    "d3d66069-5f9b-4e54-970b-e634ca345f3b",
-    "00951c6b-3b44-4a24-b7da-f1a5c4093ed6",
-    "ea68d4c2-8817-4182-b0db-8ef88726cef0",
-    "6b3741e5-4952-4d7a-90b0-abdab5d8d497",
-]
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('fine_tune_processing.log'),
+        logging.StreamHandler()
+    ]
+)
 
 # Constants
 SAVE_BATCH_SIZE = 5  # Save after processing this many texts
+MODEL_ID = "ft:mistral-small-latest:e3b79b5f:20250317:23c7051d"  # Your fine-tuned model ID
+# MODEL_ID="ft:open-mistral-nemo:e3b79b5f:20250318:ad997c5f"
 
-def load_test_data() -> pd.DataFrame:
+class ManipulationTechnique(str, Enum):
+    STRAW_MAN = "straw_man"
+    APPEAL_TO_FEAR = "appeal_to_fear"
+    FUD = "fud"
+    BANDWAGON = "bandwagon"
+    WHATABOUTISM = "whataboutism"
+    LOADED_LANGUAGE = "loaded_language"
+    GLITTERING_GENERALITIES = "glittering_generalities"
+    EUPHORIA = "euphoria"
+    CHERRY_PICKING = "cherry_picking"
+    CLICHE = "cliche"
+
+class TextAnalysis(BaseModel):
+    """Data model for text analysis output."""
+    manipulation_techniques: List[ManipulationTechnique] = Field(default_factory=list)
+
+def load_test_data(csv_path: str = None) -> pd.DataFrame:
     """Load test data from CSV file."""
-    csv_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'csv', 'test.csv')
-    df = pd.read_csv(csv_path)
-    # return df[df['id'].isin(test_ids)]
-    return df
+    if csv_path is None:
+        csv_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'csv', 'test.csv')
+    
+    try:
+        df = pd.read_csv(csv_path)
+        logging.info(f"Loaded {len(df)} rows from {csv_path}")
+        return df.sample(n=10, random_state=42).reset_index(drop=True)
+    except Exception as e:
+        logging.error(f"Error loading test data: {e}")
+        raise
 
 def get_results_jsonl_path() -> str:
     """Get path to results JSONL file."""
@@ -59,12 +85,12 @@ def load_processed_ids() -> Set[str]:
     
     return processed_ids
 
-def append_results_batch(results_batch: List[tuple]) -> None:
+def append_results_batch(results_batch: List[Dict]) -> None:
     """
     Append a batch of results to the JSONL file.
     
     Args:
-        results_batch: List of tuples (text_id, identified_techniques)
+        results_batch: List of dictionaries with result data
     """
     if not results_batch:
         return
@@ -73,12 +99,7 @@ def append_results_batch(results_batch: List[tuple]) -> None:
     
     try:
         with open(jsonl_path, 'a', encoding='utf-8') as f:
-            for text_id, techniques in results_batch:
-                result = {
-                    'id': text_id,
-                    'techniques': techniques,
-                    'timestamp': time.time()
-                }
+            for result in results_batch:
                 f.write(json.dumps(result, ensure_ascii=False) + '\n')
         
         logging.info(f"Appended {len(results_batch)} results to {jsonl_path}")
@@ -86,64 +107,54 @@ def append_results_batch(results_batch: List[tuple]) -> None:
         logging.error(f"Error appending results to JSONL: {e}")
         raise
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('manipulation_analysis.log'),
-        logging.StreamHandler()
-    ]
-)
-
-class ManipulationAnalyzer:
+class FineTunedProcessor:
     def __init__(self):
-        self.embedding_manager = EmbeddingManager()
-        self.store_manager = StoreManager(os.getenv('MONGO_URI'))
-        self.llm_manager = LLMManager()
-        logging.info("ManipulationAnalyzer initialized successfully")
-    
-    async def analyze_text(self, text: str, k: int = 10) -> Dict:
-        """
-        Analyze a text for manipulation techniques using the RAG pipeline.
-        
-        Args:
-            text: The text to analyze
-            k: Number of similar texts to retrieve
-            
-        Returns:
-            LLM output directly without additional formatting
-        """
-        try:
-            # Get embedding for the query text
-            embedding = self.embedding_manager.get_embedding(text)
-            
-            # Find similar texts
-            similar_texts = self.store_manager.find_similar(embedding, k=k)
-            
-            # Build prompt and get LLM analysis
-            prompt = self.llm_manager.build_prompt(text, similar_texts)
+        self.api_key = "qW37oQZvs6c93c2jEAmtwYZq6scsGo1i" #os.getenv("MISTRAL_API_KEY")
+        if not self.api_key:
+            raise ValueError("MISTRAL_API_KEY environment variable must be set")
+        print(f"API Key is: {self.api_key}")
+        self.client = Mistral(api_key=self.api_key)
 
-            # Get raw LLM output
-            llm_response = await self.llm_manager.get_analysis(prompt)
+        self.model = MODEL_ID
+        logging.info(f"FineTunedProcessor initialized with model: {self.model}")
+
+    async def process_text(self, text: str) -> Dict:
+        """Process text using the fine-tuned model."""
+        try:
+            response = await asyncio.to_thread(
+                self.client.chat.parse,
+                model=self.model,
+                messages=[
+                    {
+                        "role": "user", 
+                        "content": f"Analyze the following post and list any manipulation techniques used:\n\nPost: {text}"
+                    }
+                ],
+                response_format=TextAnalysis,
+                temperature=0.1
+            )
             
-            # Return the raw LLM output
-            return llm_response['analysis']
+            # Extract the parsed result
+            analysis = response.choices[0].message.parsed
+
+            print(f"Analysis: {analysis}")
+            
+            return analysis.dict()
             
         except Exception as e:
-            logging.error(f"Error analyzing text: {e}")
+            logging.error(f"Error processing text: {e}")
             raise
 
 async def main():
     try:
-        # Initialize analyzer
-        analyzer = ManipulationAnalyzer()
+        # Initialize processor
+        processor = FineTunedProcessor()
         
         # Load test data from CSV
         test_data = load_test_data()
         logging.info(f"Loaded {len(test_data)} test cases from CSV")
         
-        # Load or create results JSON and get processed IDs
+        # Load processed IDs from JSONL file
         processed_ids = load_processed_ids()
         logging.info(f"Already processed {len(processed_ids)} texts")
         
@@ -154,7 +165,7 @@ async def main():
         total_count = len(test_data)
         
         # Process each test case
-        for _, row in test_data.iterrows():
+        for idx, row in test_data.iterrows():
             text_id = row['id']
             
             # Skip if already processed
@@ -166,16 +177,23 @@ async def main():
             
             try:
                 # Add a sleep interval before making the next request
-                await asyncio.sleep(2)
+                await asyncio.sleep(0.5)
                 
-                # Run analysis and get raw LLM output
-                llm_output = await analyzer.analyze_text(row['content'], k=10)
+                # Process text with fine-tuned model
+                analysis_result = await processor.process_text(row['content'])
                 
-                # Extract techniques and add to batch
-                identified_techniques = llm_output['manipulation_techniques']
+                # Extract techniques and print result
+                identified_techniques = analysis_result['manipulation_techniques']
                 print("\nIdentified techniques:", identified_techniques)
                 
-                results_batch.append((text_id, identified_techniques))
+                # Add result to batch
+                results_batch.append({
+                    'id': text_id,
+                    'content': row['content'],
+                    'techniques': identified_techniques,
+                    'timestamp': time.time()
+                })
+                
                 processed_ids.add(text_id)
                 processed_count += 1
                 
