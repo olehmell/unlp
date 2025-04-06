@@ -377,15 +377,15 @@ def main():
         db = ManipulationVectorDB(os.getenv('MONGO_URI'))
         
         # Add sample data
-        # db.bulk_add_from(
-        #     'data/bin/train.parquet',
-        #     'content',
-        #     'techniques',
-        #     trigger_positions_col='trigger_words',
-        #     manipulative_col='manipulative',
-        #     id_col='id',
-        #     store_full_text=True
-        # )
+        db.bulk_add_from(
+            'data/bin/train.parquet',
+            'content',
+            'techniques',
+            trigger_positions_col='trigger_words',
+            manipulative_col='manipulative',
+            id_col='id',
+            store_full_text=True
+        )
         
         # Test similarity search
         test_text = "Новий огляд мапи DeepState від російського військового експерта, кухара путіна 2 розряду, спеціаліста по снарядному голоду та ректора музичної академії міноборони рф Євгєнія Пригожина. Пригожин прогнозує, що невдовзі настане день звільнення Криму і день розпаду росії. Каже, що передумови цього вже створені. *Відео взяли з каналу ФД. @informnapalm"

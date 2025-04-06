@@ -14,9 +14,9 @@ I explored multiple classification approaches, focusing on both traditional NLP 
 | XML-RoBERTa (base) | Smaller version of XML-RoBERTa with classification head | 0.368 |
 | TF-IDF with Linear Regression | Traditional NLP approach enhanced with synthetic data for minority classes generated using Mistral Large | 0.359 |
 | TF-IDF with SVM | Classical machine learning approach (synthetic data actually reduced performance) | 0.310 |
-| RAG with Mistral Nemo | Retrieval-augmented generation searching for similar labeled messages from training data | 0.282 |
+| RAG with Mistral Nemo | Retrieval-augmented generation searching for similar labeled messages from training data | 0.309 |
 | Mistral Nemo Fine-tuning | Fine-tuned on training dataset using question-answer format | 0.280 |
-| Gemma 1B Fine-tuning | Fine-tuned using question-answer format | 0.180 |
+| Gemma 1B Fine-tuning | Fine-tuned using question-answer format | 0.280 |
 
 ## Key Findings
 
